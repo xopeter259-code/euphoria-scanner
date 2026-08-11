@@ -252,10 +252,16 @@ function checkTicket(token) {
     backend after the GitHub page is working.
   */
 
-  google.script.run
-    .withSuccessHandler(showResult)
-    .checkTicket(token);
-}
+fetch("https://script.google.com/macros/s/AKfycbyuFCFc-OyIQOpNLqqTgRdz_hwixBwyCehJK6_ImCp2o95wsQqofDUqb7hGtL-JNVkD/exec?token=" + encodeURIComponent(token))
+  .then(response => response.json())
+  .then(data => showResult(data))
+  .catch(error => {
+    document.getElementById("result").innerHTML =
+      '<div class="result-card invalid">' +
+      '<div class="status">CONNECTION ERROR</div>' +
+      '<div class="details">Unable to connect to Project F server.</div>' +
+      '</div>';
+  });
 
 
 function showResult(data) {
