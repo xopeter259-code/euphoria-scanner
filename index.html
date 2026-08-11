@@ -325,23 +325,59 @@ function showResult(data) {
 }
 
 
-function allowEntry(token) {
+ function allowEntry(token) {
 
-  google.script.run
-    .withSuccessHandler(function(response) {
+  document.getElementById("result").innerHTML =
+    '<div class="result-card">' +
+    '<div class="status">APPROVING...</div>' +
+    '</div>';
 
-      if (response === "USED") {
+  fetch(
+    "https://script.google.com/macros/s/AKfycbyuFCFc-OyIQOpNLqqTgRdz_hwixBwyCehJK6_ImCp2o95wsQqofDUqb7hGtL-JNVkD/exec?entry=1&token=" +
+    encodeURIComponent(token)
+  )
+  .then(response => response.json())
+  .then(data => {
 
-        document.getElementById("result").innerHTML =
-          '<div class="result-card valid">' +
-          '<div class="status">✓ ENTRY APPROVED</div>' +
-          '<div class="details">Pass marked as USED.</div>' +
-          '<button onclick="restartScanner()">SCAN NEXT</button>' +
-          '</div>';
+    if (data.status === "USED") {
 
-      }
+      document.getElementById("result").innerHTML =
+        '<div class="result-card valid">' +
+        '<div class="status">✓ ENTRY APPROVED</div>' +
+        '<div class="details">Pass marked as USED.</div>' +
+        '<button onclick="restartScanner()">SCAN NEXT</button>' +
+        '</div>';
 
-    })
+    } else if (data.status === "ALREADY_USED") {
+
+      document.getElementById("result").innerHTML =
+        '<div class="result-card used">' +
+        '<div class="status">⚠ ALREADY USED</div>' +
+        '<button onclick="restartScanner()">SCAN NEXT</button>' +
+        '</div>';
+
+    } else {
+
+      document.getElementById("result").innerHTML =
+        '<div class="result-card invalid">' +
+        '<div class="status">✕ ENTRY DENIED</div>' +
+        '<button onclick="restartScanner()">SCAN NEXT</button>' +
+        '</div>';
+
+    }
+
+  })
+  .catch(error => {
+
+    document.getElementById("result").innerHTML =
+      '<div class="result-card invalid">' +
+      '<div class="status">CONNECTION ERROR</div>' +
+      '<div class="details">Could not contact the Project F server.</div>' +
+      '</div>';
+
+  });
+}
+  
     .markEntry(token);
 
 }
