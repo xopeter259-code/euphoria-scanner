@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>EUPHORIA '26 — Entry Scanner</title>
+
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% 15%, #35104d 0%, #120916 35%, #050507 75%);
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 520px;
+  margin: auto;
+  padding: 28px 18px 40px;
+}
+
+.title {
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: 5px;
+  text-shadow:
+    0 0 8px #ff1493,
+    0 0 25px #8b2cff;
+}
+
+.tagline {
+  margin-top: 8px;
+  color: #ff4eb8;
+  font-size: 14px;
+  letter-spacing: 3px;
+  font-weight: bold;
+}
+
+.party {
+  margin-top: 9px;
+  color: #ff1493;
+  font-size: 12px;
+  letter-spacing: 5px;
+}
+
+.scanner-box {
+  margin-top: 30px;
+  padding: 14px;
+  border: 2px solid #ff1493;
+  border-radius: 22px;
+  background: rgba(0,0,0,.45);
+  box-shadow:
+    0 0 18px #ff1493,
+    0 0 40px rgba(123,44,255,.35);
+}
+
+#reader {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 15px;
+}
+
+.scan-text {
+  margin-top: 18px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.subtext {
+  margin-top: 6px;
+  color: #aaa;
+  font-size: 13px;
+}
+
+#result {
+  margin-top: 24px;
+}
+
+.result-card {
+  padding: 22px;
+  border-radius: 18px;
+  background: rgba(0,0,0,.7);
+}
+
+.valid {
+  border: 2px solid #00ff9d;
+  box-shadow: 0 0 25px rgba(0,255,157,.4);
+}
+
+.invalid {
+  border: 2px solid #ff1744;
+  box-shadow: 0 0 25px rgba(255,23,68,.4);
+}
+
+.used {
+  border: 2px solid #ff9d00;
+  box-shadow: 0 0 25px rgba(255,157,0,.4);
+}
+
+.status {
+  font-size: 27px;
+  font-weight: 900;
+  margin-bottom: 15px;
+}
+
+.valid .status {
+  color: #00ff9d;
+}
+
+.invalid .status {
+  color: #ff1744;
+}
+
+.used .status {
+  color: #ff9d00;
+}
+
+.details {
+  line-height: 1.9;
+  color: #ddd;
+}
+
+button {
+  width: 100%;
+  margin-top: 18px;
+  padding: 15px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #ff1493, #8b2cff);
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+button:disabled {
+  opacity: .5;
+}
+
+.footer {
+  margin-top: 35px;
+  color: #777;
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="title">EUPHORIA</div>
+
+  <div class="tagline">
+    THE NIGHT WE DON'T TALK
+  </div>
+
+  <div class="party">
+    FRESHERS PARTY
+  </div>
+
+  <div class="scanner-box">
+
+    <div id="reader"></div>
+
+    <div class="scan-text">
+      SCAN ENTRY PASS
+    </div>
+
+    <div class="subtext">
+      Scan the attendee's QR code
+    </div>
+
+  </div>
+
+  <div id="result"></div>
+
+  <div class="footer">
+    PROJECT F • EUPHORIA '26
+  </div>
+
+</div>
+
+<script>
+
+let scanner;
+
+function startScanner() {
+
+  scanner = new Html5Qrcode("reader");
+
+  scanner.start(
+    { facingMode: "environment" },
+    {
+      fps: 10,
+      qrbox: {
+        width: 250,
+        height: 250
+      }
+    },
+
+    function(decodedText) {
+
+      scanner.stop();
+
+      checkTicket(decodedText);
+
+    },
+
+    function(errorMessage) {
+
+      // Ignore normal scanning errors
+
+    }
+
+  ).catch(function(error) {
+
+    document.getElementById("result").innerHTML =
+      '<div class="result-card invalid">' +
+      '<div class="status">CAMERA ERROR</div>' +
+      '<div class="details">' +
+      'Please allow camera access and reload the scanner.' +
+      '</div>' +
+      '</div>';
+
+  });
+}
+
+
+function checkTicket(token) {
+
+  document.getElementById("result").innerHTML =
+    '<div class="result-card">' +
+    '<div class="status">CHECKING...</div>' +
+    '</div>';
+
+  /*
+    IMPORTANT:
+    We will connect this to your Google Apps Script
+    backend after the GitHub page is working.
+  */
+
+  google.script.run
+    .withSuccessHandler(showResult)
+    .checkTicket(token);
+}
+
+
+function showResult(data) {
+
+  let result = document.getElementById("result");
+
+  if (data.status === "VALID") {
+
+    result.innerHTML =
+      '<div class="result-card valid">' +
+      '<div class="status">✓ VALID PASS</div>' +
+
+      '<div class="details">' +
+      '<b>Name:</b> ' + escapeHtml(data.name) + '<br>' +
+      '<b>Enrollment:</b> ' + escapeHtml(data.enrollment) + '<br>' +
+      '<b>Department:</b> ' + escapeHtml(data.department) + '<br>' +
+      '<b>Year:</b> ' + escapeHtml(data.year) + '<br>' +
+      '<b>Ticket:</b> ' + escapeHtml(data.ticket) +
+      '</div>' +
+
+      '<button onclick="allowEntry(\'' +
+      escapeJs(data.token) +
+      '\')">ALLOW ENTRY</button>' +
+
+      '<button onclick="restartScanner()">SCAN NEXT</button>' +
+
+      '</div>';
+
+  }
+
+  else if (data.status === "USED") {
+
+    result.innerHTML =
+      '<div class="result-card used">' +
+      '<div class="status">⚠ ALREADY USED</div>' +
+
+      '<div class="details">' +
+      '<b>Name:</b> ' + escapeHtml(data.name) + '<br>' +
+      '<b>Ticket:</b> ' + escapeHtml(data.ticket) +
+      '</div>' +
+
+      '<button onclick="restartScanner()">SCAN NEXT</button>' +
+      '</div>';
+
+  }
+
+  else {
+
+    result.innerHTML =
+      '<div class="result-card invalid">' +
+      '<div class="status">✕ INVALID PASS</div>' +
+      '<div class="details">' +
+      'This QR code is not registered with Project F.' +
+      '</div>' +
+
+      '<button onclick="restartScanner()">SCAN NEXT</button>' +
+      '</div>';
+
+  }
+
+}
+
+
+function allowEntry(token) {
+
+  google.script.run
+    .withSuccessHandler(function(response) {
+
+      if (response === "USED") {
+
+        document.getElementById("result").innerHTML =
+          '<div class="result-card valid">' +
+          '<div class="status">✓ ENTRY APPROVED</div>' +
+          '<div class="details">Pass marked as USED.</div>' +
+          '<button onclick="restartScanner()">SCAN NEXT</button>' +
+          '</div>';
+
+      }
+
+    })
+    .markEntry(token);
+
+}
+
+
+function restartScanner() {
+
+  document.getElementById("result").innerHTML = "";
+
+  startScanner();
+
+}
+
+
+function escapeHtml(text) {
+
+  return String(text || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+}
+
+
+function escapeJs(text) {
+
+  return String(text || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'");
+
+}
+
+
+startScanner();
+
+</script>
+
+</body>
+</html>
