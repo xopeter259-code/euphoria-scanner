@@ -195,9 +195,15 @@ button:disabled {
 
 <script>
 
-let scanner;
+let scanner = null;
 
 function startScanner() {
+
+  if (scanner) {
+    try {
+      scanner.clear();
+    } catch (e) {}
+  }
 
   scanner = new Html5Qrcode("reader");
 
@@ -213,16 +219,16 @@ function startScanner() {
 
     function(decodedText) {
 
-      scanner.stop();
-
-      checkTicket(decodedText);
+      scanner.stop().then(function() {
+        checkTicket(decodedText);
+      }).catch(function() {
+        checkTicket(decodedText);
+      });
 
     },
 
     function(errorMessage) {
-
-      // Ignore normal scanning errors
-
+      // Normal QR scanning errors are ignored.
     }
 
   ).catch(function(error) {
@@ -246,22 +252,28 @@ function checkTicket(token) {
     '<div class="status">CHECKING...</div>' +
     '</div>';
 
-  /*
-    IMPORTANT:
-    We will connect this to your Google Apps Script
-    backend after the GitHub page is working.
-  */
+  fetch(
+    "https://script.google.com/macros/s/AKfycbyuFCFc-OyIQOpNLqqTgRdz_hwixBwyCehJK6_ImCp2o95wsQqofDUqb7hGtL-JNVkD/exec?token=" +
+    encodeURIComponent(token)
+  )
+  .then(function(response) {
+    return response.json();
+  })
+  .then(function(data) {
+    showResult(data);
+  })
+  .catch(function(error) {
 
-fetch("https://script.google.com/macros/s/AKfycbyuFCFc-OyIQOpNLqqTgRdz_hwixBwyCehJK6_ImCp2o95wsQqofDUqb7hGtL-JNVkD/exec?token=" + encodeURIComponent(token))
-  .then(response => response.json())
-  .then(data => showResult(data))
-  .catch(error => {
     document.getElementById("result").innerHTML =
       '<div class="result-card invalid">' +
       '<div class="status">CONNECTION ERROR</div>' +
-      '<div class="details">Unable to connect to Project F server.</div>' +
+      '<div class="details">' +
+      'Unable to connect to Project F server.' +
+      '</div>' +
       '</div>';
+
   });
+}
 
 
 function showResult(data) {
@@ -273,7 +285,6 @@ function showResult(data) {
     result.innerHTML =
       '<div class="result-card valid">' +
       '<div class="status">✓ VALID PASS</div>' +
-
       '<div class="details">' +
       '<b>Name:</b> ' + escapeHtml(data.name) + '<br>' +
       '<b>Enrollment:</b> ' + escapeHtml(data.enrollment) + '<br>' +
@@ -297,12 +308,10 @@ function showResult(data) {
     result.innerHTML =
       '<div class="result-card used">' +
       '<div class="status">⚠ ALREADY USED</div>' +
-
       '<div class="details">' +
       '<b>Name:</b> ' + escapeHtml(data.name) + '<br>' +
       '<b>Ticket:</b> ' + escapeHtml(data.ticket) +
       '</div>' +
-
       '<button onclick="restartScanner()">SCAN NEXT</button>' +
       '</div>';
 
@@ -316,16 +325,14 @@ function showResult(data) {
       '<div class="details">' +
       'This QR code is not registered with Project F.' +
       '</div>' +
-
       '<button onclick="restartScanner()">SCAN NEXT</button>' +
       '</div>';
 
   }
-
 }
 
 
- function allowEntry(token) {
+function allowEntry(token) {
 
   document.getElementById("result").innerHTML =
     '<div class="result-card">' +
@@ -336,8 +343,10 @@ function showResult(data) {
     "https://script.google.com/macros/s/AKfycbyuFCFc-OyIQOpNLqqTgRdz_hwixBwyCehJK6_ImCp2o95wsQqofDUqb7hGtL-JNVkD/exec?entry=1&token=" +
     encodeURIComponent(token)
   )
-  .then(response => response.json())
-  .then(data => {
+  .then(function(response) {
+    return response.json();
+  })
+  .then(function(data) {
 
     if (data.status === "USED") {
 
@@ -348,7 +357,9 @@ function showResult(data) {
         '<button onclick="restartScanner()">SCAN NEXT</button>' +
         '</div>';
 
-    } else if (data.status === "ALREADY_USED") {
+    }
+
+    else if (data.status === "ALREADY_USED") {
 
       document.getElementById("result").innerHTML =
         '<div class="result-card used">' +
@@ -356,7 +367,9 @@ function showResult(data) {
         '<button onclick="restartScanner()">SCAN NEXT</button>' +
         '</div>';
 
-    } else {
+    }
+
+    else {
 
       document.getElementById("result").innerHTML =
         '<div class="result-card invalid">' +
@@ -367,19 +380,17 @@ function showResult(data) {
     }
 
   })
-  .catch(error => {
+  .catch(function(error) {
 
     document.getElementById("result").innerHTML =
       '<div class="result-card invalid">' +
       '<div class="status">CONNECTION ERROR</div>' +
-      '<div class="details">Could not contact the Project F server.</div>' +
+      '<div class="details">' +
+      'Could not contact the Project F server.' +
+      '</div>' +
       '</div>';
 
   });
-}
-  
-    .markEntry(token);
-
 }
 
 
