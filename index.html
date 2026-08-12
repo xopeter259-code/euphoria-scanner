@@ -245,7 +245,7 @@ function startScanner() {
 }
 
 
-function checkTicket(token) {
+function checkTicket(qrData) {
 
   document.getElementById("result").innerHTML =
     '<div class="result-card">' +
@@ -254,7 +254,7 @@ function checkTicket(token) {
 
   fetch(
     "https://script.google.com/macros/s/AKfycbyuFCFc-OyIQOpNLqqTgRdz_hwixBwyCehJK6_ImCp2o95wsQqofDUqb7hGtL-JNVkD/exec?token=" +
-    encodeURIComponent(token)
+    encodeURIComponent(qrData)
   )
   .then(function(response) {
     return response.json();
@@ -294,7 +294,7 @@ function showResult(data) {
       '</div>' +
 
       '<button onclick="allowEntry(\'' +
-      escapeJs(data.token) +
+     escapeJs(data.ticket + "|" + data.token)
       '\')">ALLOW ENTRY</button>' +
 
       '<button onclick="restartScanner()">SCAN NEXT</button>' +
