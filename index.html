@@ -240,14 +240,10 @@ function startScanner() {
       /* SAVE COMPLETE QR */
       currentQR = decodedText;
 
-      scanner.stop()
-        .then(function() {
+      
           checkTicket(decodedText);
-        })
-        .catch(function() {
-          checkTicket(decodedText);
-        });
-
+      
+          scanner.stop().catch(function() {});
     },
 
     function(errorMessage) {
