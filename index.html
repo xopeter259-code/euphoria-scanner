@@ -142,6 +142,7 @@ button {
   font-size: 16px;
   font-weight: bold;
   letter-spacing: 1px;
+  cursor: pointer;
 }
 
 .footer {
@@ -194,13 +195,23 @@ button {
 let scanner = null;
 let processing = false;
 
+/* Stores the COMPLETE QR value:
+   PF26-0001|SECRET_TOKEN
+*/
+let currentQR = "";
+
 const API_URL =
 "https://script.google.com/macros/s/AKfycbyuFCFc-OyIQOpNLqqTgRdz_hwixBwyCehJK6_ImCp2o95wsQqofDUqb7hGtL-JNVkD/exec";
 
 
+/* =========================================
+   START SCANNER
+========================================= */
+
 function startScanner() {
 
   processing = false;
+  currentQR = "";
 
   if (scanner) {
     try {
@@ -212,7 +223,6 @@ function startScanner() {
 
   scanner.start(
     { facingMode: "environment" },
-
     {
       fps: 10,
       qrbox: {
@@ -227,6 +237,9 @@ function startScanner() {
 
       processing = true;
 
+      /* SAVE COMPLETE QR */
+      currentQR = decodedText;
+
       scanner.stop()
         .then(function() {
           checkTicket(decodedText);
@@ -238,7 +251,7 @@ function startScanner() {
     },
 
     function(errorMessage) {
-      // Normal scanner errors ignored
+      // Normal QR errors ignored
     }
 
   ).catch(function(error) {
@@ -277,10 +290,14 @@ function checkTicket(qrData) {
   })
 
   .then(function(data) {
+
     showResult(data);
+
   })
 
   .catch(function(error) {
+
+    console.error(error);
 
     document.getElementById("result").innerHTML =
       '<div class="result-card invalid">' +
@@ -288,7 +305,7 @@ function checkTicket(qrData) {
       '<div class="details">' +
       'Unable to connect to Project F server.' +
       '</div>' +
-      '<button onclick="restartScanner()">TRY AGAIN</button>' +
+      '<button type="button" onclick="restartScanner()">TRY AGAIN</button>' +
       '</div>';
 
   });
@@ -298,118 +315,139 @@ function checkTicket(qrData) {
 /* =========================================
    SHOW RESULT
 ========================================= */
-function allowEntry(qrData) {
+
+function showResult(data) {
 
   const result = document.getElementById("result");
 
-  result.innerHTML = `
-    <div class="result-card">
-      <div class="status">APPROVING...</div>
-    </div>
-  `;
+  /*
+   IMPORTANT:
+   If this pass was already used,
+   show ALREADY USED.
+  */
 
-  fetch(
-    API_URL +
-    "?entry=1&token=" +
-    encodeURIComponent(qrData)
-  )
-  .then(function(response) {
-    return response.json();
-  })
-  .then(function(data) {
+  if (
+    data.status === "VALID" &&
+    String(data.entryStatus || "").toUpperCase() === "USED"
+  ) {
 
-    console.log("ENTRY RESPONSE:", data);
+    result.innerHTML =
+      '<div class="result-card used">' +
 
-    if (data.status === "USED") {
+      '<div class="status">⚠ ALREADY USED</div>' +
 
-      result.innerHTML = `
-        <div class="result-card valid">
+      '<div class="details">' +
+      '<b>Name:</b> ' + escapeHtml(data.name) + '<br>' +
+      '<b>Ticket:</b> ' + escapeHtml(data.ticket) +
+      '</div>' +
 
-          <div class="status">✓ ENTRY APPROVED</div>
+      '<button id="scanNextBtn" type="button">' +
+      'SCAN NEXT' +
+      '</button>' +
 
-          <div class="details">
-            Pass marked as USED.
-          </div>
-
-          <button id="scanNextBtn" type="button">
-            SCAN NEXT
-          </button>
-
-        </div>
-      `;
-
-      document.getElementById("scanNextBtn").onclick =
-        restartScanner;
-
-      return;
-    }
-
-
-    if (data.status === "ALREADY_USED") {
-
-      result.innerHTML = `
-        <div class="result-card used">
-
-          <div class="status">⚠ ALREADY USED</div>
-
-          <button id="scanNextBtn" type="button">
-            SCAN NEXT
-          </button>
-
-        </div>
-      `;
-
-      document.getElementById("scanNextBtn").onclick =
-        restartScanner;
-
-      return;
-    }
-
-
-    result.innerHTML = `
-      <div class="result-card invalid">
-
-        <div class="status">✕ ENTRY DENIED</div>
-
-        <div class="details">
-          Server response: ${escapeHtml(data.status)}
-        </div>
-
-        <button id="scanNextBtn" type="button">
-          SCAN NEXT
-        </button>
-
-      </div>
-    `;
+      '</div>';
 
     document.getElementById("scanNextBtn").onclick =
       restartScanner;
 
-  })
-  .catch(function(error) {
+    return;
+  }
 
-    console.error(error);
 
-    result.innerHTML = `
-      <div class="result-card invalid">
+  if (data.status === "VALID") {
 
-        <div class="status">CONNECTION ERROR</div>
+    result.innerHTML =
+      '<div class="result-card valid">' +
 
-        <div class="details">
-          Could not contact Project F server.
-        </div>
+      '<div class="status">✓ VALID PASS</div>' +
 
-        <button id="scanNextBtn" type="button">
-          TRY AGAIN
-        </button>
+      '<div class="details">' +
 
-      </div>
-    `;
+      '<b>Name:</b> ' +
+      escapeHtml(data.name) +
+      '<br>' +
 
-    document.getElementById("scanNextBtn").onclick =
-      restartScanner;
-  });
+      '<b>Enrollment:</b> ' +
+      escapeHtml(data.enrollment) +
+      '<br>' +
+
+      '<b>Department:</b> ' +
+      escapeHtml(data.department) +
+      '<br>' +
+
+      '<b>Year:</b> ' +
+      escapeHtml(data.year) +
+      '<br>' +
+
+      '<b>Ticket:</b> ' +
+      escapeHtml(data.ticket) +
+
+      '</div>' +
+
+      '<button id="allowBtn" type="button">' +
+      'ALLOW ENTRY' +
+      '</button>' +
+
+      '<button id="scanNextBtn" type="button">' +
+      'SCAN NEXT' +
+      '</button>' +
+
+      '</div>';
+
+
+    /*
+     IMPORTANT:
+     We use addEventListener instead of
+     inline onclick.
+    */
+
+    document.getElementById("allowBtn").addEventListener(
+      "click",
+      function() {
+
+        allowEntry(currentQR);
+
+      }
+    );
+
+
+    document.getElementById("scanNextBtn").addEventListener(
+      "click",
+      function() {
+
+        restartScanner();
+
+      }
+    );
+
+    return;
+  }
+
+
+  /* =========================================
+     INVALID
+  ========================================= */
+
+  result.innerHTML =
+    '<div class="result-card invalid">' +
+
+    '<div class="status">✕ INVALID PASS</div>' +
+
+    '<div class="details">' +
+    'This QR code is not registered with Project F.' +
+    '</div>' +
+
+    '<button id="scanNextBtn" type="button">' +
+    'SCAN NEXT' +
+    '</button>' +
+
+    '</div>';
+
+
+  document.getElementById("scanNextBtn").onclick =
+    restartScanner;
 }
+
 
 /* =========================================
    ALLOW ENTRY
@@ -417,10 +455,23 @@ function allowEntry(qrData) {
 
 function allowEntry(qrData) {
 
-  document.getElementById("result").innerHTML =
+  if (!qrData) {
+
+    alert("QR data is missing. Please scan the pass again.");
+
+    return;
+  }
+
+
+  const result = document.getElementById("result");
+
+
+  result.innerHTML =
     '<div class="result-card">' +
     '<div class="status">APPROVING...</div>' +
+    '<div class="details">Please wait...</div>' +
     '</div>';
+
 
   fetch(
     API_URL +
@@ -429,90 +480,123 @@ function allowEntry(qrData) {
   )
 
   .then(function(response) {
+
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+
     return response.json();
+
   })
 
   .then(function(data) {
 
+    console.log("ENTRY RESPONSE:", data);
+
+
+    /* ENTRY APPROVED */
+
     if (data.status === "USED") {
 
-      document.getElementById("result").innerHTML =
+      result.innerHTML =
         '<div class="result-card valid">' +
 
-        '<div class="status">' +
-        '✓ ENTRY APPROVED' +
-        '</div>' +
+        '<div class="status">✓ ENTRY APPROVED</div>' +
 
         '<div class="details">' +
         'Pass marked as USED.' +
         '</div>' +
 
-        '<button onclick="restartScanner()">' +
+        '<button id="scanNextBtn" type="button">' +
         'SCAN NEXT' +
         '</button>' +
 
         '</div>';
 
+
+      document.getElementById("scanNextBtn").onclick =
+        restartScanner;
+
       return;
     }
 
+
+    /* ALREADY USED */
 
     if (data.status === "ALREADY_USED") {
 
-      document.getElementById("result").innerHTML =
+      result.innerHTML =
         '<div class="result-card used">' +
 
-        '<div class="status">' +
-        '⚠ ALREADY USED' +
+        '<div class="status">⚠ ALREADY USED</div>' +
+
+        '<div class="details">' +
+        'This pass has already been used.' +
         '</div>' +
 
-        '<button onclick="restartScanner()">' +
+        '<button id="scanNextBtn" type="button">' +
         'SCAN NEXT' +
         '</button>' +
 
         '</div>';
 
+
+      document.getElementById("scanNextBtn").onclick =
+        restartScanner;
+
       return;
     }
 
 
-    document.getElementById("result").innerHTML =
+    /* INVALID */
+
+    result.innerHTML =
       '<div class="result-card invalid">' +
 
-      '<div class="status">' +
-      '✕ ENTRY DENIED' +
-      '</div>' +
+      '<div class="status">✕ ENTRY DENIED</div>' +
 
       '<div class="details">' +
-      'The server could not approve this pass.' +
+      'Server response: ' +
+      escapeHtml(data.status) +
       '</div>' +
 
-      '<button onclick="restartScanner()">' +
+      '<button id="scanNextBtn" type="button">' +
       'SCAN NEXT' +
       '</button>' +
 
       '</div>';
 
+
+    document.getElementById("scanNextBtn").onclick =
+      restartScanner;
+
   })
+
 
   .catch(function(error) {
 
-    document.getElementById("result").innerHTML =
+    console.error("ALLOW ENTRY ERROR:", error);
+
+
+    result.innerHTML =
       '<div class="result-card invalid">' +
 
-      '<div class="status">' +
-      'CONNECTION ERROR' +
-      '</div>' +
+      '<div class="status">CONNECTION ERROR</div>' +
 
       '<div class="details">' +
-      'Could not contact the Project F server.' +
+      'Could not contact Project F server.<br><br>' +
+      escapeHtml(error.message) +
       '</div>' +
 
-      '<button onclick="restartScanner()">' +
+      '<button id="scanNextBtn" type="button">' +
       'TRY AGAIN' +
       '</button>' +
 
       '</div>';
+
+
+    document.getElementById("scanNextBtn").onclick =
+      restartScanner;
 
   });
 }
@@ -531,7 +615,7 @@ function restartScanner() {
 
 
 /* =========================================
-   SECURITY / DISPLAY HELPERS
+   ESCAPE HTML
 ========================================= */
 
 function escapeHtml(text) {
