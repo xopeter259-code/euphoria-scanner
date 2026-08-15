@@ -328,20 +328,25 @@ function showResult(data) {
   ) {
 
     result.innerHTML =
-      '<div class="result-card used">' +
+  '<div class="result-card invalid">' +
 
-      '<div class="status">⚠ ALREADY USED</div>' +
+  '<div class="status">✕ INVALID PASS</div>' +
 
-      '<div class="details">' +
-      '<b>Name:</b> ' + escapeHtml(data.name) + '<br>' +
-      '<b>Ticket:</b> ' + escapeHtml(data.ticket) +
-      '</div>' +
+  '<div class="details">' +
+  'Reason: ' +
+  escapeHtml(data.reason || data.status || "UNKNOWN_ERROR") +
+  '<br><br>' +
+  'Please check the pass.' +
+  '</div>' +
 
-      '<button id="scanNextBtn" type="button">' +
-      'SCAN NEXT' +
-      '</button>' +
+  '<button id="scanNextBtn" type="button">' +
+  'SCAN NEXT' +
+  '</button>' +
 
-      '</div>';
+  '</div>';
+
+document.getElementById("scanNextBtn").onclick =
+  restartScanner;
 
     document.getElementById("scanNextBtn").onclick =
       restartScanner;
